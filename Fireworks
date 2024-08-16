@@ -1,0 +1,140 @@
+import 'dart:math';
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Fireworks',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: FireworksScreen(),
+    );
+  }
+}
+
+class FireworksScreen extends StatefulWidget {
+  @override
+  _FireworksScreenState createState() => _FireworksScreenState();
+}
+
+class _FireworksScreenState extends State<FireworksScreen> with SingleTickerProviderStateMixin {
+  List<Firework> fireworks = [];
+
+  void _triggerFirework() {
+    setState(() {
+      fireworks.add(Firework(Random().nextDouble() * 300, Random().nextDouble() * 500));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Fireworks"),
+      ),
+      body: Stack(
+        children: [
+          Container(color: Colors.black),
+          ...fireworks.map((firework) => AnimatedFirework(firework: firework)).toList(),
+          Center(
+            child: ElevatedButton(
+              onPressed: _triggerFirework,
+              child: Text("Launch fireworks"),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class Firework {
+  final double x;
+  final double y;
+  Firework(this.x, this.y);
+}
+
+class AnimatedFirework extends StatefulWidget {
+  final Firework firework;
+
+  AnimatedFirework({required this.firework});
+
+  @override
+  _AnimatedFireworkState createState() => _AnimatedFireworkState();
+}
+
+class _AnimatedFireworkState extends State<AnimatedFirework> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: Duration(seconds: 1),
+      vsync: this,
+    )..forward();
+
+    // Dispose the controller once animation is done
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _controller.dispose();
+        // Remove firework from the widget tree after animation
+        Future.delayed(Duration(milliseconds: 100), () {
+          setState(() {});
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: FireworkPainter(widget.firework, _controller.value),
+          size: Size(300, 600),
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+}
+
+class FireworkPainter extends CustomPainter {
+  final Firework firework;
+  final double animationValue;
+
+  FireworkPainter(this.firework, this.animationValue) : super();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    final int numParticles = 50;
+    for (int i = 0; i < numParticles; i++) {
+      final angle = Random().nextDouble() * 2 * pi;
+      final radius = Random().nextDouble() * 1000 * animationValue;
+      final x = firework.x + cos(angle) * radius;
+      final y = firework.y + sin(angle) * radius;
+      paint.color = Colors.primaries[Random().nextInt(Colors.primaries.length)].withOpacity(1 - animationValue);
+      canvas.drawCircle(Offset(x, y), 5, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true;
+  }
+}
